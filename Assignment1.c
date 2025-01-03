@@ -5,7 +5,6 @@
 #define MAX_NAME 50
 #define MAX_STUDENTS 100
 
-// Structure definition for student
 struct Student {
     int rollNo;
     char name[MAX_NAME];
@@ -14,14 +13,23 @@ struct Student {
     float marks3;
 };
 
-// Function to swap two students
+
+int isRollNumberExists(struct Student students[], int n, int roll) {
+    for (int i = 0; i < n; i++) {
+        if (students[i].rollNo == roll) {
+            return 1;  
+        }
+    }
+    return 0;  
+}
+
 void swap(struct Student *a, struct Student *b) {
     struct Student temp = *a;
     *a = *b;
     *b = temp;
 }
 
-// QuickSort function
+// QuickSort 
 int partition(struct Student arr[], int low, int high) {
     int pivot = arr[high].rollNo;
     int i = (low - 1);
@@ -44,7 +52,7 @@ void quickSort(struct Student arr[], int low, int high) {
     }
 }
 
-// MergeSort functions
+// MergeSort 
 void merge(struct Student arr[], int l, int m, int r) {
     int i, j, k;
     int n1 = m - l + 1;
@@ -98,7 +106,7 @@ void mergeSort(struct Student arr[], int l, int r) {
     }
 }
 
-// Function to print student data
+
 void printStudents(struct Student arr[], int n) {
     printf("\nStudent Records:\n");
     printf("Roll No\tName\t\t\tMarks1\tMarks2\tMarks3\n");
@@ -110,7 +118,7 @@ void printStudents(struct Student arr[], int n) {
 
 int main() {
     struct Student students[MAX_STUDENTS];
-    int n;
+    int n, tempRoll;
     
     printf("Enter number of students: ");
     scanf("%d", &n);
@@ -118,21 +126,33 @@ int main() {
     // Input student data
     for (int i = 0; i < n; i++) {
         printf("\nEnter details for student %d:\n", i + 1);
-        printf("Roll No: ");
-        scanf("%d", &students[i].rollNo);
+        do {
+            printf("Roll No: ");
+            scanf("%d", &tempRoll);
+            if (tempRoll <= 0) {
+                printf("Error: Roll number must be greater than 0!\n");
+                continue;
+            }
+            if (isRollNumberExists(students, i, tempRoll)) {
+                printf("Error: Roll number already exists!\n");
+            }
+        } while (isRollNumberExists(students, i, tempRoll) || tempRoll <= 0);
+        
+        students[i].rollNo = tempRoll;
         printf("Name (First Last): ");
         getchar(); // Clear buffer
         fgets(students[i].name, MAX_NAME, stdin);
-        students[i].name[strcspn(students[i].name, "\n")] = 0; // Remove newline
-        printf("Marks1: ");
+        students[i].name[strcspn(students[i].name, "\n")] = 0;
+        
+        printf("Enter marks for three subjects:\n");
+        printf("Marks 1: ");
         scanf("%f", &students[i].marks1);
-        printf("Marks2: "); 
+        printf("Marks 2: ");
         scanf("%f", &students[i].marks2);
-        printf("Marks3: ");
+        printf("Marks 3: ");
         scanf("%f", &students[i].marks3);
     }
     
-    // Create copies for both sorting methods
     struct Student studentsQuick[MAX_STUDENTS];
     struct Student studentsMerge[MAX_STUDENTS];
     memcpy(studentsQuick, students, n * sizeof(struct Student));

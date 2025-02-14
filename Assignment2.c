@@ -8,10 +8,9 @@
 #define EMPTY 2
 #define X_PLAYER 3
 #define O_PLAYER 5
-
-void clearScreen() {
-    system("cls");
-}
+#define CENTER_WEIGHT 4
+#define CORNER_WEIGHT 3
+#define SIDE_WEIGHT 2
 
 void delay(int milliseconds) {
     Sleep(milliseconds);
@@ -26,8 +25,8 @@ void initializeBoard(int board[SIZE][SIZE]) {
 }
 
 void displayBoard(int board[SIZE][SIZE]) {
-    clearScreen();
     printf("\n");
+    printf("-------------------------\n");
     printf("     1   2   3  \n");
     printf("   +---+---+---+\n");
     for (int i = 0; i < SIZE; i++) {
@@ -39,11 +38,7 @@ void displayBoard(int board[SIZE][SIZE]) {
         }
         printf("\n   +---+---+---+\n");
     }
-}
-
-void flushInput() {
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);
+    printf("-------------------------\n");
 }
 
 int getPlayerChoice() {
@@ -51,11 +46,9 @@ int getPlayerChoice() {
     while (true) {
         printf("Choose your symbol (1=X, 2=O): ");
         if (scanf("%d", &choice) == 1 && (choice == 1 || choice == 2)) {
-            flushInput();
             return choice;
         }
         printf("Invalid input! Please enter 1 or 2.\n");
-        flushInput();
     }
 }
 
@@ -102,76 +95,91 @@ void playerMove(int board[SIZE][SIZE], int player) {
             row--; col--;
             if (isValidMove(board, row, col)) {
                 board[row][col] = player;
-                flushInput();
                 break;
             }
             printf("Invalid move! Try again.\n");
         } else {
             printf("Invalid input! Enter two numbers.\n");
-            flushInput();
         }
     }
 }
 
-void machineMove(int board[SIZE][SIZE], int machine, int player) {
-    // Check for winning move
-    for (int i = 0; i < SIZE; i++) {
-        for (int j = 0; j < SIZE; j++) {
-            if (board[i][j] == EMPTY) {
-                board[i][j] = machine;
-                if (isWinningMove(board, machine)) {
-                    return;
-                }
-                board[i][j] = EMPTY;
-            }
-        }
-    }
-
-    // Block player's winning move
+bool canFork(int board[SIZE][SIZE], int player) {
+    int winningMoves = 0;
     for (int i = 0; i < SIZE; i++) {
         for (int j = 0; j < SIZE; j++) {
             if (board[i][j] == EMPTY) {
                 board[i][j] = player;
-                if (isWinningMove(board, player)) {
-                    board[i][j] = machine;
-                    return;
+                
+                for (int x = 0; x < SIZE; x++) {
+                    for (int y = 0; y < SIZE; y++) {
+                        if (board[x][y] == EMPTY) {
+                            board[x][y] = player;
+                            if (isWinningMove(board, player)) winningMoves++;
+                            board[x][y] = EMPTY;
+                        }
+                    }
                 }
                 board[i][j] = EMPTY;
+                if (winningMoves >= 2) return true;
+                winningMoves = 0;
             }
         }
     }
+    return false;
+}
 
-    // Take center if available
-    if (board[1][1] == EMPTY) {
-        board[1][1] = machine;
-        return;
-    }
-
-    // Take corners
-    int corners[4][2] = {{0,0}, {0,2}, {2,0}, {2,2}};
-    for (int i = 0; i < 4; i++) {
-        if (board[corners[i][0]][corners[i][1]] == EMPTY) {
-            board[corners[i][0]][corners[i][1]] = machine;
-            return;
-        }
-    }
-
-    // Take any available space
-    for (int i = 0; i < SIZE; i++) {
-        for (int j = 0; j < SIZE; j++) {
-            if (board[i][j] == EMPTY) {
+void machineMove(int board[SIZE][SIZE], int machine, int player) {
+    
+    int weights[SIZE][SIZE] = {
+        {CORNER_WEIGHT, SIDE_WEIGHT, CORNER_WEIGHT},
+        {SIDE_WEIGHT, CENTER_WEIGHT, SIDE_WEIGHT},
+        {CORNER_WEIGHT, SIDE_WEIGHT, CORNER_WEIGHT}
+    };
+    
+   
+    int scores[SIZE][SIZE] = {0};
+    int maxScore = -1;
+    int bestMove[2] = {-1, -1};
+    
+    
+    for(int i = 0; i < SIZE; i++) {
+        for(int j = 0; j < SIZE; j++) {
+            if(board[i][j] == EMPTY) {
+                scores[i][j] = weights[i][j];
+                
+                
                 board[i][j] = machine;
-                return;
+                if(isWinningMove(board, machine)) {
+                    scores[i][j] += 100;
+                }
+                
+                
+                board[i][j] = player;
+                if(isWinningMove(board, player)) {
+                    scores[i][j] += 50;
+                }
+                
+                board[i][j] = EMPTY;
+                
+                
+                if(scores[i][j] > maxScore) {
+                    maxScore = scores[i][j];
+                    bestMove[0] = i;
+                    bestMove[1] = j;
+                }
             }
         }
     }
+    
+    
+    board[bestMove[0]][bestMove[1]] = machine;
 }
 
 bool playAgain() {
     char response;
     printf("\nPlay again? (y/n): ");
-    flushInput();
-    scanf("%c", &response);
+    scanf(" %c", &response);
     return (response == 'y' || response == 'Y');
 }
 
@@ -181,7 +189,6 @@ int main() {
 
     while (continueGame) {
         initializeBoard(board);
-        clearScreen();
         printf("=== Tic Tac Toe ===\n\n");
         
         int playerChoice = getPlayerChoice();

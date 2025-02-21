@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 #define SIZE 3
 #define EMPTY ' '
@@ -16,6 +17,43 @@ void userM(char board[SIZE][SIZE], int *moveCount);
 int minMax(char board[SIZE][SIZE], int depth, bool isMaximizing);
 void aiM(char board[SIZE][SIZE], int ply, int *moveCount);
 
+char getUserSymbol() {
+    char symbol;
+    while (1) {
+        printf("Choose your symbol (X/O): ");
+        if (scanf(" %c", &symbol) != 1) {
+            printf("Error: Invalid input! Please enter X or O.\n");
+            while (getchar() != '\n'); // Clear input buffer
+            continue;
+        }
+        
+        symbol = toupper(symbol);
+        if (symbol == 'X' || symbol == 'O') {
+            return symbol;
+        }
+        printf("Error: Invalid symbol! Please enter X or O.\n");
+        while (getchar() != '\n'); 
+    }
+}
+
+int getPlyDepth() {
+    int ply;
+    while (1) {
+        printf("Choose Min-Max search depth (1 or 2): ");
+        if (scanf("%d", &ply) != 1) {
+            printf("Error: Invalid input! Please enter 1 or 2.\n");
+            while (getchar() != '\n'); 
+            continue;
+        }
+        
+        if (ply == 1 || ply == 2) {
+            return ply;
+        }
+        printf("Error: Invalid depth! Please enter 1 or 2.\n");
+        while (getchar() != '\n'); 
+    }
+}
+
 int main()
 {
     char board[SIZE][SIZE] = {
@@ -23,25 +61,14 @@ int main()
         {EMPTY, EMPTY, EMPTY},
         {EMPTY, EMPTY, EMPTY}};
 
-    printf("Choose your symbol (X/O): ");
-    scanf(" %c", &USER);
+    
+    USER = getUserSymbol();
+    AI = (USER == 'X') ? 'O' : 'X';
 
-    if (USER == 'X' || USER == 'x')
-    {
-        USER = 'X';
-        AI = 'O';
-    }
-    else
-    {
-        USER = 'O';
-        AI = 'X';
-    }
+    
+    int ply = getPlyDepth();
 
     int currentPlayer = (USER == 'X') ? 1 : 2;
-
-    int ply;
-    printf("Choose Min-Max search depth : ");
-    scanf("%d", &ply);
 
     int moveCount = 0;
     bool gameOver = false;
@@ -196,17 +223,28 @@ void userM(char board[SIZE][SIZE], int *moveCount)
     while (1)
     {
         printf("Enter row and column (0-2) separated by space: ");
-        scanf("%d %d", &row, &col);
-        if (row >= 0 && row < SIZE && col >= 0 && col < SIZE && board[row][col] == EMPTY)
-        {
-            board[row][col] = USER;
-            (*moveCount)++;
-            break;
+        if (scanf("%d %d", &row, &col) != 2) {
+            printf("Error: Invalid input! Please enter two numbers separated by space.\n");
+            while (getchar() != '\n'); // Clear input buffer
+            continue;
         }
-        else
-        {
-            printf("Invalid move. Try again.\n");
+
+        // Check range
+        if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) {
+            printf("Error: Position out of range! Row and column must be between 0 and 2.\n");
+            continue;
         }
+
+        // Check if position is empty
+        if (board[row][col] != EMPTY) {
+            printf("Error: Position already occupied! Choose an empty position.\n");
+            continue;
+        }
+
+        // Valid move
+        board[row][col] = USER;
+        (*moveCount)++;
+        break;
     }
 }
 

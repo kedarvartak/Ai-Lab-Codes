@@ -61,7 +61,7 @@ bool isValidMove(int board[SIZE][SIZE], int row, int col) {
 bool isWinningMove(int board[SIZE][SIZE], int player) {
     int winProduct = player * player * player;
     
-    // Check rows and columns
+    
     for (int i = 0; i < SIZE; i++) {
         if (board[i][0] * board[i][1] * board[i][2] == winProduct ||
             board[0][i] * board[1][i] * board[2][i] == winProduct) {
@@ -69,7 +69,7 @@ bool isWinningMove(int board[SIZE][SIZE], int player) {
         }
     }
     
-    // Check diagonals
+    
     if (board[0][0] * board[1][1] * board[2][2] == winProduct ||
         board[0][2] * board[1][1] * board[2][0] == winProduct) {
         return true;
@@ -204,7 +204,7 @@ int main() {
                 playerMove(board, player);
             } else {
                 printf("\nMachine thinking...");
-                delay(1000);  // Add delay for better UX
+                delay(1000);  
                 machineMove(board, machine, player);
             }
 

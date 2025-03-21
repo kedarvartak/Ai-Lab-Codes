@@ -5,27 +5,38 @@
 
 #define MAX 100
 
+// data structures and global variables
+// this defines a simple coordinate structure with 2 integers where -
+// x -> row position in the grid and y -> column position in the grid
 typedef struct {
     int x, y;
 } Point;
 
 typedef struct {
     Point point;
-    int g, h, f;
+    int g, h, f; // g -> cost from start to this node , h -> estimated cost from this node to goal (heuristic) , f -> g + h
 } Node;
 
+// min heap structure
 typedef struct {
-    Node nodes[MAX];
-    int size;
+    Node nodes[MAX]; // array of nodes
+    int size; // current number of nodes in heap
 } MinHeap;
 
-int grid[MAX][MAX];
+// Add these function prototypes here
+void push(MinHeap *heap, Node node);
+Node pop(MinHeap *heap);
+void heapifyUp(MinHeap *heap, int index);
+
+// global variables
+int grid[MAX][MAX]; // stores obstacles and empty cells
 int rows, cols;
 Point start, goal;
-bool visited[MAX][MAX];
-char pathGrid[MAX][MAX];
-Point parent[MAX][MAX];
+bool visited[MAX][MAX]; // tracks visited cells
+char pathGrid[MAX][MAX]; // visual representation of grid
+Point parent[MAX][MAX]; // stores path information
 
+// sets up grid 
 void initializeGrid() {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
@@ -42,6 +53,7 @@ void clearInputBuffer() {
     while ((c = getchar()) != '\n' && c != EOF);
 }
 
+// for wrong inputs
 bool validateInput(int value, int min, int max, const char* errorMsg) {
     if (value < min || value > max) {
         printf("%s (Valid range: %d-%d)\n", errorMsg, min, max);
@@ -51,6 +63,7 @@ bool validateInput(int value, int min, int max, const char* errorMsg) {
     return true;
 }
 
+// for entering manual dimens
 void enterDimensions() {
     printf("Enter grid dimensions (rows cols): ");
     while (scanf("%d %d", &rows, &cols) != 2 || 
@@ -199,51 +212,88 @@ void reconstructPath(Point current) {
     pathGrid[goal.x][goal.y] = 'G';
 }
 
-void bfs() {
-    Point openList[MAX], closedList[MAX];
-    int openSize = 0, closedSize = 0;
+void bestFirstSearch() {  
+    MinHeap openList = { .size = 0 };  // Use the existing MinHeap structure
+    bool inOpenList[MAX][MAX] = {false};  // Track nodes in open list
     Point directions[] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
     
-    openList[openSize++] = start;
-    visited[start.x][start.y] = true;
+    // Initialize start node
+    Node startNode = { 
+        .point = start, 
+        .g = 0, 
+        .h = heuristic(start, goal), 
+        .f = heuristic(start, goal) 
+    };
+    push(&openList, startNode);
+    inOpenList[start.x][start.y] = true;
     
-    while (openSize > 0) {
-        Point current = openList[0];
-        for (int i = 0; i < openSize - 1; i++) {
-            openList[i] = openList[i + 1];
-        }
-        openSize--;
-        closedList[closedSize++] = current;
+    int step = 0;
+    bool pathFound = false;
+    
+    while (openList.size > 0) {
+        step++;
+        printf("\nStep %d:\n", step);
         
-        if (current.x == goal.x && current.y == goal.y) {
-            printf("Goal reached!\n");
-            reconstructPath(current);
+        // Print current open list
+        printf("Open List: ");
+        for (int i = 0; i < openList.size; i++) {
+            printf("(%d,%d)[h=%d] ", 
+                openList.nodes[i].point.x, 
+                openList.nodes[i].point.y,
+                openList.nodes[i].h);
+        }
+        printf("\n");
+        
+        // Print current visited nodes
+        printf("Visited Nodes: ");
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                if (visited[i][j]) {
+                    printf("(%d,%d) ", i, j);
+                }
+            }
+        }
+        printf("\n");
+        
+        Node current = pop(&openList);
+        inOpenList[current.point.x][current.point.y] = false;
+        visited[current.point.x][current.point.y] = true;
+        
+        if (current.point.x == goal.x && current.point.y == goal.y) {
+            printf("\nGoal reached!\n");
+            reconstructPath(current.point);
+            pathFound = true;
             break;
         }
         
+        // Explore neighbors
         for (int i = 0; i < 4; i++) {
-            Point neighbor = {current.x + directions[i].x, current.y + directions[i].y};
-            if (isValid(neighbor) && !visited[neighbor.x][neighbor.y]) {
-                openList[openSize++] = neighbor;
-                visited[neighbor.x][neighbor.y] = true;
-                parent[neighbor.x][neighbor.y] = current;
+            Point neighbor = {current.point.x + directions[i].x, current.point.y + directions[i].y};
+            if (isValid(neighbor) && !visited[neighbor.x][neighbor.y] && !inOpenList[neighbor.x][neighbor.y]) {
+                Node neighborNode = { 
+                    .point = neighbor,
+                    .g = 0,  // Not used in Best First Search
+                    .h = heuristic(neighbor, goal),
+                    .f = heuristic(neighbor, goal)  // f = h in Best First Search
+                };
+                push(&openList, neighborNode);
+                inOpenList[neighbor.x][neighbor.y] = true;
+                parent[neighbor.x][neighbor.y] = current.point;
             }
         }
+        
+        // Print current grid state
+        printf("\nCurrent Grid State:\n");
+        printGrid(pathGrid);
     }
     
-    printf("Final Open List: ");
-    for (int i = 0; i < openSize; i++) {
-        printf("(%d, %d) ", openList[i].x, openList[i].y);
+    if (!pathFound) {
+        printf("\nNo path found!\n");
     }
-    printf("\nFinal Closed List: ");
-    for (int i = 0; i < closedSize; i++) {
-        printf("(%d, %d) ", closedList[i].x, closedList[i].y);
-    }
-    printf("\n");
     
-    printf("Path Grid:\n");
+    printf("\nFinal Path Grid:\n");
     printGrid(pathGrid);
-    printf("Heuristics:\n");
+    printf("\nHeuristics:\n");
     printHeuristics();
 }
 
@@ -304,6 +354,7 @@ void aStar() {
     visited[start.x][start.y] = true;
     
     int step = 0;
+    bool pathFound = false;
     while (openList.size > 0) {
         step++;
         printf("\nStep %d:\n", step);
@@ -333,6 +384,7 @@ void aStar() {
         if (current.point.x == goal.x && current.point.y == goal.y) {
             printf("\nGoal reached!\n");
             reconstructPath(current.point);
+            pathFound = true;
             break;
         }
         
@@ -340,7 +392,7 @@ void aStar() {
             Point neighbor = {current.point.x + directions[i].x, current.point.y + directions[i].y};
             if (isValid(neighbor) && !visited[neighbor.x][neighbor.y]) {
                 Node neighborNode = { 
-                    .point = neighbor, 
+                    .point = neighbor,  
                     .g = current.g + 1, 
                     .h = heuristic(neighbor, goal), 
                     .f = current.g + 1 + heuristic(neighbor, goal) 
@@ -356,6 +408,25 @@ void aStar() {
         printGrid(pathGrid);
     }
     
+    if (!pathFound) {
+        printf("\nNo path found!\n");
+        // Print final lists even when no path is found
+        printf("\nFinal Open List: ");
+        for (int i = 0; i < openList.size; i++) {
+            printf("(%d,%d)[g=%d,h=%d,f=%d] ", 
+                openList.nodes[i].point.x, 
+                openList.nodes[i].point.y,
+                openList.nodes[i].g,
+                openList.nodes[i].h,
+                openList.nodes[i].f);
+        }
+        printf("\nFinal Closed List: ");
+        for (int i = 0; i < closedSize; i++) {
+            printf("(%d,%d) ", closedList[i].x, closedList[i].y);
+        }
+        printf("\n");
+    }
+    
     printf("\nFinal Path Grid:\n");
     printGrid(pathGrid);
     printf("\nHeuristics:\n");
@@ -369,7 +440,7 @@ bool loadFromFile(const char* filename) {
         return false;
     }
 
-    // Read dimensions
+    // Read dimensions from first line
     if (fscanf(file, "%d %d", &rows, &cols) != 2) {
         printf("\n  Error: Invalid dimensions in file\n");
         fclose(file);
@@ -384,71 +455,65 @@ bool loadFromFile(const char* filename) {
 
     initializeGrid();
 
-    // Read number of obstacles
-    int numObstacles;
-    if (fscanf(file, "%d", &numObstacles) != 1) {
-        printf("\n  Error: Invalid number of obstacles in file\n");
-        fclose(file);
-        return false;
-    }
+    // Skip the header line with column numbers
+    char line[MAX * 4];
+    fgets(line, sizeof(line), file);  // Skip newline after dimensions
+    fgets(line, sizeof(line), file);  // Skip column numbers
+    fgets(line, sizeof(line), file);  // Skip separator line
 
-    if (numObstacles < 0 || numObstacles >= rows * cols) {
-        printf("\n  Error: Invalid number of obstacles in file\n");
-        fclose(file);
-        return false;
-    }
-
-    // Read obstacles
-    for (int i = 0; i < numObstacles; i++) {
-        int r, c;
-        if (fscanf(file, "%d %d", &r, &c) != 2) {
-            printf("\n  Error: Invalid obstacle coordinates in file\n");
+    // Read the grid
+    int numObstacles = 0;
+    for (int i = 0; i < rows; i++) {
+        // Skip row number and first |
+        if (fscanf(file, "%*d |") != 0) {
+            printf("\n  Error: Invalid row format in file\n");
             fclose(file);
             return false;
         }
-        if (r < 0 || r >= rows || c < 0 || c >= cols) {
-            printf("\n  Error: Obstacle coordinates out of bounds in file\n");
-            fclose(file);
-            return false;
+
+        // Read each cell in the row
+        for (int j = 0; j < cols; j++) {
+            char cell;
+            // Read cell content (skipping spaces)
+            if (fscanf(file, " %c |", &cell) != 1) {
+                printf("\n  Error: Invalid cell format in file\n");
+                fclose(file);
+                return false;
+            }
+
+            switch (cell) {
+                case 'S':
+                    start.x = i;
+                    start.y = j;
+                    break;
+                case 'G':
+                    goal.x = i;
+                    goal.y = j;
+                    break;
+                case '$':
+                    grid[i][j] = 1;
+                    pathGrid[i][j] = '$';
+                    numObstacles++;
+                    break;
+                case '-':
+                    // Empty cell
+                    break;
+                default:
+                    printf("\n  Error: Invalid character '%c' in grid\n", cell);
+                    fclose(file);
+                    return false;
+            }
         }
-        grid[r][c] = 1;
-        pathGrid[r][c] = '$';
-    }
-
-    // Read start position
-    if (fscanf(file, "%d %d", &start.x, &start.y) != 2) {
-        printf("\n  Error: Invalid start position in file\n");
-        fclose(file);
-        return false;
-    }
-
-    if (start.x < 0 || start.x >= rows || start.y < 0 || start.y >= cols) {
-        printf("\n  Error: Start position out of bounds in file\n");
-        fclose(file);
-        return false;
-    }
-
-    // Read goal position
-    if (fscanf(file, "%d %d", &goal.x, &goal.y) != 2) {
-        printf("\n  Error: Invalid goal position in file\n");
-        fclose(file);
-        return false;
-    }
-
-    if (goal.x < 0 || goal.x >= rows || goal.y < 0 || goal.y >= cols) {
-        printf("\n  Error: Goal position out of bounds in file\n");
-        fclose(file);
-        return false;
+        // Skip newline
+        fgets(line, sizeof(line), file);
     }
 
     // After successful loading, display the configuration
     printf("\nLoaded Configuration:\n");
     printf("Grid Size: %d x %d\n", rows, cols);
     printf("Number of Obstacles: %d\n", numObstacles);
-    
     printf("\nInitial Grid State:\n");
-    printGrid(pathGrid);  // Use existing printGrid function to show the layout
-    
+    printGrid(pathGrid);
     printf("\nStart Position: (%d, %d)\n", start.x, start.y);
     printf("Goal Position: (%d, %d)\n", goal.x, goal.y);
 
@@ -471,7 +536,7 @@ int main() {
         printf("2. Configure Grid Size\n");
         printf("3. Place Obstacles\n");
         printf("4. Set Start & Goal Points\n");
-        printf("5. Run BFS Algorithm\n");
+        printf("5. Run Best First Search Algorithm\n");
         printf("6. Run A* Algorithm\n");
         printf("7. Exit\n");
         
@@ -518,17 +583,19 @@ int main() {
                 }
                 break;
             case 5:
+                if (!dimensionsSet || !startGoalSet) {
+                    printf("Error: Please complete the setup first!\n");
+                } else {
+                    printf("\nRunning Best First Search Algorithm:\n");
+                    bestFirstSearch();
+                }
+                break;
             case 6:
                 if (!dimensionsSet || !startGoalSet) {
                     printf("Error: Please complete the setup first!\n");
                 } else {
-                    if (choice == 5) {
-                        printf("\nRunning BFS Algorithm:\n");
-                        bfs();
-                    } else {
-                        printf("\nRunning A* Algorithm:\n");
-                        aStar();
-                    }
+                    printf("\nRunning A* Algorithm:\n");
+                    aStar();
                 }
                 break;
             case 7:
